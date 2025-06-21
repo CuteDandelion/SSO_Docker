@@ -177,3 +177,4 @@ This project sets up a single sign-on (SSO) environment with multi-factor authen
   - Check logs: `docker-compose logs <service>`.
   - Ensure `reverse_proxy` network exists and services are connected.
 - **Customization**: Adjust environment variables in `docker-compose.yml` for your domain or organization details.
+- **Protocol Change**: Switching from http to https for secure connection, enabling TLS cert verification.
