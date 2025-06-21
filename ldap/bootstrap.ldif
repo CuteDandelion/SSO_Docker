@@ -1,0 +1,18 @@
+# Base Organizational Unit: devops
+dn: ou=devops,dc=example,dc=com
+objectClass: organizationalUnit
+ou: devops
+
+# Base Organizational Unit: appdev
+dn: ou=appdev,dc=example,dc=com
+objectClass: organizationalUnit
+ou: appdev
+
+# User: amrutha
+dn: cn=amrutha,ou=devops,dc=example,dc=com
+objectClass: inetOrgPerson
+cn: amrutha
+sn: Smith
+uid: amrutha
+userPassword: userpassword
+mail: amrutha@example.com
