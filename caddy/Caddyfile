@@ -1,0 +1,11 @@
+http://grafana.localtest.me {
+  reverse_proxy grafana:3000
+}
+
+http://keycloak.localtest.me {
+  reverse_proxy keycloak:8080
+}
+
+http://internal.keycloak.localtest.me {
+    reverse_proxy keycloak:8080
+}

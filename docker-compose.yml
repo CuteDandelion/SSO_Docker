@@ -1,0 +1,102 @@
+version: '3.3'
+
+services:
+  keycloak:
+    image: quay.io/keycloak/keycloak:26.2.5
+    command: start-dev
+    environment:
+      KEYCLOAK_ADMIN: admin
+      KEYCLOAK_ADMIN_PASSWORD: admin
+      KC_HOSTNAME: keycloak.localtest.me
+    volumes:
+      - keycloak_data:/opt/keycloak/data
+    ports:
+      - "8080:8080"
+    networks:
+      reverse_proxy:
+          aliases:
+             - keycloak.localtest.me
+             - internal.keycloak.localtest.me
+
+  grafana:
+    image: grafana/grafana
+    environment:
+      - GF_SERVER_ROOT_URL=http://grafana.localtest.me
+      - GF_AUTH_GENERIC_OAUTH_ENABLED=true
+      - GF_AUTH_GENERIC_OAUTH_NAME=Keycloak
+      - GF_AUTH_GENERIC_OAUTH_ALLOW_SIGN_UP=true
+      - GF_AUTH_GENERIC_OAUTH_CLIENT_ID=grafana
+      - GF_AUTH_GENERIC_OAUTH_CLIENT_SECRET=<keycloak_secret_key>
+      - GF_AUTH_GENERIC_OAUTH_SCOPES=openid profile email
+      - GF_AUTH_GENERIC_OAUTH_AUTH_URL=http://keycloak.localtest.me/realms/homelab/protocol/openid-connect/auth
+      - GF_AUTH_GENERIC_OAUTH_TOKEN_URL=http://keycloak:8080/realms/homelab/protocol/openid-connect/token
+      - GF_AUTH_GENERIC_OAUTH_API_URL=http://keycloak:8080/realms/homelab/protocol/openid-connect/userinfo
+    volumes:
+      - ./entrypoint.sh:/entrypoint.sh
+      - grafana_data:/var/lib/grafana
+      - /home/iamroot/Desktop/homelab_sso/secret.txt:/secrets/client_secret:ro
+    entrypoint: ["/entrypoint.sh"]
+    ports:
+      - "3000:3000"
+    networks:
+      - reverse_proxy
+    depends_on:
+      - keycloak
+
+  caddy:
+    image: caddy:alpine
+    volumes:
+      - ./caddy_data:/data
+      - ./caddy/Caddyfile:/etc/caddy/Caddyfile
+    ports:
+      - "80:80"
+      - "443:443"
+    networks:
+      - reverse_proxy
+    depends_on:
+      - grafana
+      - keycloak
+
+  openldap:
+    image: osixia/openldap:1.5.0
+    container_name: openldap
+    environment:
+      - LDAP_ORGANISATION=ExampleOrg
+      - LDAP_DOMAIN=example.com
+      - LDAP_BASE_DN=dc=example,dc=com
+      - LDAP_ADMIN_PASSWORD=adminpassword
+      - LDAP_CONFIG_PASSWORD=configpassword
+    ports:
+      - "389:389"
+      - "636:636"
+    networks:
+      - reverse_proxy
+    volumes:
+      - ./ldap:/docker-entrypoint-initldap.d
+      - ldap_data:/var/lib/ldap
+      - ldap_config:/etc/ldap/slapd.d
+    restart: unless-stopped
+
+  phpldapadmin:
+    image: osixia/phpldapadmin:latest
+    container_name: phpldapadmin
+    environment:
+      - PHPLDAPADMIN_LDAP_HOSTS=openldap
+      - PHPLDAPADMIN_HTTPS=false
+    ports:
+      - "8081:80"
+    networks:
+      - reverse_proxy
+    depends_on:
+      - openldap
+    restart: unless-stopped
+
+volumes:
+  keycloak_data:
+  grafana_data:
+  ldap_data:
+  ldap_config:
+
+networks:
+  reverse_proxy:
+    external: true
